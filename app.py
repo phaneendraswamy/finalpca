@@ -1,48 +1,57 @@
+import numpy as np
 import streamlit as st
 from sklearn.decomposition import PCA
-from skimage import io, color
-from skimage.util import img_as_ubyte
+from skimage import color, img_as_ubyte
+from PIL import Image
+import io as io_module
 
-# Function to compress image using PCA
-def compress_image(img, variance_ratio):
-  gray_image = color.rgb2gray(img)
-  flatten_img = gray_image.reshape(gray_image.shape[0], -1)
-  pca = PCA(n_components=variance_ratio)
-  compressed_data = pca.fit_transform(flatten_img)
-  reconstructed_image = pca.inverse_transform(compressed_data)
-  normalized_image = (reconstructed_image - reconstructed_image.min()) / (reconstructed_image.max() - reconstructed_image.min())
-  compressed_img_8bit = img_as_ubyte(normalized_image)
-  return compressed_img_8bit
+# Image compression function
+def compress_image(img):
+    gray_image = color.rgb2gray(img)
+    flattened_img = gray_image.reshape(gray_image.shape[0], -1)
+    pc = PCA(n_components=0.9)  # Adjust this if you want more or less compression
+    compressed_data = pc.fit_transform(flattened_img)
+    reconstructed_image = pc.inverse_transform(compressed_data)
+    
+    # Normalize for display
+    compressed_data_normalize = (
+        (reconstructed_image - reconstructed_image.min()) / 
+        (reconstructed_image.max() - reconstructed_image.min())
+    )
+    compressed_img_bit = img_as_ubyte(compressed_data_normalize)
+    return compressed_img_bit
 
-# Streamlit app
-st.title("PCA Image Compression App")
+# Streamlit App
+st.title("Image Compression App using PCA")
 
-# File upload
-uploaded_file = st.file_uploader("Choose an image to compress")
+# Image upload
+uploaded_image = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png"])
 
-# User input for compression level
-compression_ratio = st.slider("Compression Ratio (0% - 100%)", min_value=0, max_value=100, step=1, value=50) / 100
+if uploaded_image is not None:
+    # Read and display the original image
+    img = Image.open(uploaded_image)
+    st.image(img, caption="Original Image", use_container_width=True)
 
-if uploaded_file is not None:
-  # Read the uploaded image
-  img = io.imread(uploaded_file)
+    # Convert to numpy array
+    img_np = np.array(img)
 
-  # Perform compression
-  compressed_image = compress_image(img, compression_ratio)
+    # Compress the image
+    compressed_img_np = compress_image(img_np)
 
-  # Display original and compressed images
-  col1, col2 = st.columns(2)
-  with col1:
-    st.subheader("Original Image")
-    st.image(img, caption="Original")
-  with col2:
-    st.subheader("Compressed Image")
-    st.image(compressed_image, caption="Compressed")
+    # Convert back to displayable format
+    compressed_img = Image.fromarray(compressed_img_np)
 
-  # Download buttons for original and compressed images (optional)
-  # st.download_button("Download Original", img, mime="image/jpeg")
-  # st.download_button("Download Compressed", compressed_image, mime="image/jpeg")
+    # Display the compressed image
+    st.image(compressed_img, caption="Compressed Image", use_container_width=True)
 
-# Run the app
-if __name__ == "__main__":
-  st.balloons()  # Optional: Show a success message on startup
+    # Download option for the compressed image
+    buf = io_module.BytesIO()
+    compressed_img.save(buf, format="JPEG")
+    byte_img = buf.getvalue()
+
+    st.download_button(
+        label="Download Compressed Image",
+        data=byte_img,
+        file_name="compressed_image.jpg",
+        mime="image/jpeg"
+    )
