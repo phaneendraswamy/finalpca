@@ -1,5 +1,5 @@
-GUILCORN
-SCIKT-LERAN
-SCIKT-IMAGE
-PANDAS
+gunicorn
+scikit-learn
+scikit-image
+pandas
 flask
