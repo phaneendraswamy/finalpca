@@ -6,7 +6,7 @@ from PIL import Image
 import io as io_module
 
 # Image compression function
-def compress_image(img):
+def compress_image(img, compression_rate):
     # Ensure image is in RGB
     img_rgb = img.convert("RGB")
     
@@ -16,8 +16,8 @@ def compress_image(img):
     # Flatten the image
     flattened_img = gray_image.reshape(gray_image.shape[0], -1)
     
-    # PCA compression
-    pc = PCA(n_components=0.9)  # Adjust for more or less compression
+    # PCA compression with the chosen compression rate (in percentage)
+    pc = PCA(n_components=compression_rate / 100)  # Convert to fraction (e.g., 90% -> 0.90)
     compressed_data = pc.fit_transform(flattened_img)
     
     # Reconstruct the image
@@ -41,18 +41,29 @@ st.title("Image Compression App using PCA")
 uploaded_image = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png"])
 
 if uploaded_image is not None:
+    # Show the image upload status and options
+    # Select Compression Rate (percentage)
+    compression_rate = st.selectbox(
+        "Select Compression Rate:",
+        [90, 95, 99],  # Compression rates in percentage
+        index=0  # Default to 90% compression
+    )
+
+    # Show the selected compression percentage
+    st.write(f"Selected Compression Rate: {compression_rate}%")
+
     # Read and display the original image
     img = Image.open(uploaded_image)
     st.image(img, caption="Original Image", use_container_width=True)
 
     # Compress the image
-    compressed_img_np = compress_image(img)
+    compressed_img_np = compress_image(img, compression_rate)
 
     # Convert back to displayable format
     compressed_img = Image.fromarray(compressed_img_np)
 
     # Display the compressed image
-    st.image(compressed_img, caption="Compressed Image", use_container_width=True)
+    st.image(compressed_img, caption=f"Compressed Image at {compression_rate}%", use_container_width=True)
 
     # Download option for the compressed image
     buf = io_module.BytesIO()
@@ -62,6 +73,6 @@ if uploaded_image is not None:
     st.download_button(
         label="Download Compressed Image",
         data=byte_img,
-        file_name="compressed_image.jpg",
+        file_name=f"compressed_image_{compression_rate}.jpg",
         mime="image/jpeg"
     )
