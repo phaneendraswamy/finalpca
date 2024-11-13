@@ -1,50 +1,48 @@
-import os
-from flask import Flask, render_template, request, redirect
+import streamlit as st
 from sklearn.decomposition import PCA
 from skimage import io, color
 from skimage.util import img_as_ubyte
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'static/uploads/'
-
-# Ensure the upload folder exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
+# Function to compress image using PCA
 def compress_image(img, variance_ratio):
-    gray_image = color.rgb2gray(img)
-    flatten_img = gray_image.reshape(gray_image.shape[0], -1)
-    pca = PCA(n_components=variance_ratio)
-    compressed_data = pca.fit_transform(flatten_img)
-    reconstructed_image = pca.inverse_transform(compressed_data)
-    normalized_image = (reconstructed_image - reconstructed_image.min()) / (reconstructed_image.max() - reconstructed_image.min())
-    compressed_img_8bit = img_as_ubyte(normalized_image)
-    return compressed_img_8bit
+  gray_image = color.rgb2gray(img)
+  flatten_img = gray_image.reshape(gray_image.shape[0], -1)
+  pca = PCA(n_components=variance_ratio)
+  compressed_data = pca.fit_transform(flatten_img)
+  reconstructed_image = pca.inverse_transform(compressed_data)
+  normalized_image = (reconstructed_image - reconstructed_image.min()) / (reconstructed_image.max() - reconstructed_image.min())
+  compressed_img_8bit = img_as_ubyte(normalized_image)
+  return compressed_img_8bit
 
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        # File upload
-        if "file" not in request.files:
-            return redirect(request.url)
-        file = request.files["file"]
-        if file.filename == "":
-            return redirect(request.url)
+# Streamlit app
+st.title("PCA Image Compression App")
 
-        # Compression level from the form
-        variance_ratio = float(request.form.get("compression")) / 100
+# File upload
+uploaded_file = st.file_uploader("Choose an image to compress")
 
-        # Load image and compress
-        img = io.imread(file)
-        compressed_image = compress_image(img, variance_ratio)
+# User input for compression level
+compression_ratio = st.slider("Compression Ratio (0% - 100%)", min_value=0, max_value=100, step=1, value=50) / 100
 
-        # Save original and compressed images
-        original_path = os.path.join(app.config['UPLOAD_FOLDER'], "original.jpg")
-        compressed_path = os.path.join(app.config['UPLOAD_FOLDER'], "compressed.jpg")
-        io.imsave(original_path, img_as_ubyte(color.rgb2gray(img)))
-        io.imsave(compressed_path, compressed_image)
+if uploaded_file is not None:
+  # Read the uploaded image
+  img = io.imread(uploaded_file)
 
-        return render_template("index.html", original=original_path, compressed=compressed_path)
-    return render_template("index.html")
+  # Perform compression
+  compressed_image = compress_image(img, compression_ratio)
 
+  # Display original and compressed images
+  col1, col2 = st.columns(2)
+  with col1:
+    st.subheader("Original Image")
+    st.image(img, caption="Original")
+  with col2:
+    st.subheader("Compressed Image")
+    st.image(compressed_image, caption="Compressed")
+
+  # Download buttons for original and compressed images (optional)
+  # st.download_button("Download Original", img, mime="image/jpeg")
+  # st.download_button("Download Compressed", compressed_image, mime="image/jpeg")
+
+# Run the app
 if __name__ == "__main__":
-    app.run(debug=True,host="0.0.0.0",port=5050)
+  st.balloons()  # Optional: Show a success message on startup
