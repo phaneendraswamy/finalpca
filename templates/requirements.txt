@@ -1,5 +1,5 @@
 streamlit
+numpy
 scikit-learn
 scikit-image
-pandas
-flask
+pillow

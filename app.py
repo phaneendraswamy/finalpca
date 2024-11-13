@@ -7,18 +7,31 @@ import io as io_module
 
 # Image compression function
 def compress_image(img):
-    gray_image = color.rgb2gray(img)
+    # Ensure image is in RGB
+    img_rgb = img.convert("RGB")
+    
+    # Convert to grayscale
+    gray_image = color.rgb2gray(np.array(img_rgb))
+    
+    # Flatten the image
     flattened_img = gray_image.reshape(gray_image.shape[0], -1)
-    pc = PCA(n_components=0.9)  # Adjust this if you want more or less compression
+    
+    # PCA compression
+    pc = PCA(n_components=0.9)  # Adjust for more or less compression
     compressed_data = pc.fit_transform(flattened_img)
+    
+    # Reconstruct the image
     reconstructed_image = pc.inverse_transform(compressed_data)
     
     # Normalize for display
     compressed_data_normalize = (
-        (reconstructed_image - reconstructed_image.min()) / 
+        (reconstructed_image - reconstructed_image.min()) /
         (reconstructed_image.max() - reconstructed_image.min())
     )
+    
+    # Convert to uint8 (image format)
     compressed_img_bit = img_as_ubyte(compressed_data_normalize)
+    
     return compressed_img_bit
 
 # Streamlit App
@@ -32,11 +45,8 @@ if uploaded_image is not None:
     img = Image.open(uploaded_image)
     st.image(img, caption="Original Image", use_container_width=True)
 
-    # Convert to numpy array
-    img_np = np.array(img)
-
     # Compress the image
-    compressed_img_np = compress_image(img_np)
+    compressed_img_np = compress_image(img)
 
     # Convert back to displayable format
     compressed_img = Image.fromarray(compressed_img_np)
